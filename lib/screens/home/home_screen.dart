@@ -1,13 +1,12 @@
 import 'dart:developer';
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:tflite_flutter/tflite_flutter.dart' as tfl;
 import 'package:tflite_flutter/tflite_flutter.dart';
-
+import 'dart:typed_data';
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key});
 
@@ -57,18 +56,43 @@ class _MyHomePageState extends State<MyHomePage> {
     log("interpreter $_interpreter $_labels");
   }
 
+
+
+
+
+
+
+
   Future<void> classifyImage(File image) async {
-    var imageBytes = (img.decodeImage(image.readAsBytesSync()))!;
-    img.Image resizedImage =
-        img.copyResize(imageBytes, width: 224, height: 224);
-    Uint8List imageAsList = resizedImage.getBytes();
-    var input = imageAsList.buffer.asUint32List().reshape([1, 224, 224, 3]);
+    // Load the image
+    img.Image? originalImage = img.decodeImage(image.readAsBytesSync());
+    if (originalImage == null) {
+      print('Error: Could not decode image.');
+      return;
+    }
+
+    // Resize the image to 224x224
+    img.Image resizedImage = img.copyResize(originalImage, width: 224, height: 224);
+
+    // Convert the resized image to a byte array (RGB format)
+    int totalPixels = 224 * 224;
+    Uint8List imageBytes = Uint8List(totalPixels * 3);
+    for (int i = 0; i < totalPixels; i++) {
+      int pixel = resizedImage[i];
+      imageBytes[i * 3] = img.getRed(pixel);
+      imageBytes[i * 3 + 1] = img.getGreen(pixel);
+      imageBytes[i * 3 + 2] = img.getBlue(pixel);
+    }
+
+    // Reshape the byte array to match the input shape of the model
+    var input = [[1.23, 6.54, 7.81, 3.21, 2.22]];
 
     // Prepare output tensor
     var output = List.generate(1, (_) => List.filled(_labels!.length, 0));
 
     _interpreter!.run(input, output);
 
+    // Process the output to find the highest probability
     var highestProb = 0.0;
     var labelIndex = 0;
     for (var i = 0; i < _labels!.length; i++) {
@@ -78,8 +102,10 @@ class _MyHomePageState extends State<MyHomePage> {
       }
     }
 
-    log('Prediction: ${_labels![labelIndex]}, Confidence: $highestProb');
+    // Log the prediction
+    print('Prediction: ${_labels![labelIndex]}, Confidence: $highestProb');
   }
+
 
   @override
   Widget build(BuildContext context) {
