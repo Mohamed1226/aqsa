@@ -2,6 +2,8 @@ import 'package:aqsa/screens/home/home_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import 'screens/person_detecter/person_detect_screen.dart';
+
 void main() {
   runApp(const MyApp());
 }
@@ -14,7 +16,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return const GetMaterialApp(
       title: 'AI',
-      home: MyHomePage(),
+      home: PersonDetectorScreen(),
     );
   }
 }
