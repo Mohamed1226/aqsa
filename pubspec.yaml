@@ -35,7 +35,7 @@ dependencies:
   #------------- AI --------------
 #  tflite: ^1.1.2
   image: ^3.2.0
-  tflite_flutter: ^0.10.3
+  tflite_v2: ^1.0.0
   # -------------- Drawer --------------
 #  flutter_zoom_drawer: ^2.3.1
   #--------------------- showcaseview ---------

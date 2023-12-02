@@ -4,9 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:tflite_flutter/tflite_flutter.dart' as tfl;
-import 'package:tflite_flutter/tflite_flutter.dart';
-import 'dart:typed_data';
+import 'package:tflite_v2/tflite_v2.dart';
+
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key});
 
@@ -17,8 +16,7 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   ImagePicker? imagePicker;
   File? image;
-  Interpreter? _interpreter;
-  List<String>? _labels;
+  String? _label;
 
   @override
   initState() {
@@ -49,63 +47,35 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> loadDataModel() async {
-    _interpreter = await Interpreter.fromAsset('assets/model_unquant.tflite');
-
-    final labelData = await rootBundle.loadString('assets/labels.txt');
-    _labels = labelData.split('\n');
-    log("interpreter $_interpreter $_labels");
+    String? res = await Tflite.loadModel(
+        model: "assets/model_unquant.tflite",
+        labels: 'assets/labels.txt',
+        numThreads: 1,
+        // defaults to 1
+        isAsset: true,
+        // defaults to true, set to false to load resources outside assets
+        useGpuDelegate:
+            false // defaults to false, set to true to use GPU delegate
+        );
   }
-
-
-
-
-
-
-
 
   Future<void> classifyImage(File image) async {
-    // Load the image
-    img.Image? originalImage = img.decodeImage(image.readAsBytesSync());
-    if (originalImage == null) {
-      print('Error: Could not decode image.');
-      return;
-    }
-
-    // Resize the image to 224x224
-    img.Image resizedImage = img.copyResize(originalImage, width: 224, height: 224);
-
-    // Convert the resized image to a byte array (RGB format)
-    int totalPixels = 224 * 224;
-    Uint8List imageBytes = Uint8List(totalPixels * 3);
-    for (int i = 0; i < totalPixels; i++) {
-      int pixel = resizedImage[i];
-      imageBytes[i * 3] = img.getRed(pixel);
-      imageBytes[i * 3 + 1] = img.getGreen(pixel);
-      imageBytes[i * 3 + 2] = img.getBlue(pixel);
-    }
-
-    // Reshape the byte array to match the input shape of the model
-    var input = [[1.23, 6.54, 7.81, 3.21, 2.22]];
-
-    // Prepare output tensor
-    var output = List.generate(1, (_) => List.filled(_labels!.length, 0));
-
-    _interpreter!.run(input, output);
-
-    // Process the output to find the highest probability
-    var highestProb = 0.0;
-    var labelIndex = 0;
-    for (var i = 0; i < _labels!.length; i++) {
-      if (output[0][i] > highestProb) {
-        highestProb = output[0][i].toDouble();
-        labelIndex = i;
-      }
-    }
-
-    // Log the prediction
-    print('Prediction: ${_labels![labelIndex]}, Confidence: $highestProb');
+    var recognitions = await Tflite.runModelOnImage(
+        path: image.path,
+        // required
+        imageMean: 0.0,
+        // defaults to 117.0
+        imageStd: 255.0,
+        // defaults to 1.0
+        numResults: 2,
+        // defaults to 5
+        threshold: 0.2,
+        // defaults to 0.1
+        asynch: true // defaults to true
+        );
+    _label = recognitions?.first["label"];
+    log("recognitions $recognitions");
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -138,6 +108,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 height: 400,
                 width: 300,
               ),
+            if (_label != null) Text(_label!)
           ],
         ),
       ),
